@@ -21,31 +21,38 @@ const a = {
 }
 
 const audio_assets = [ 
-   `music_&_language`, 
-   `monotony_&_chaos`,
+   `abandoning_feminism`,
+   `abused_&_abandoned`,
+   `cisgendered`,
+   `love_our_bodies`,
 ]
 
 const get_audio = async file_name => {
-   const response = await fetch (`/etc/${ file_name }.mp3`)
+   const response = await fetch (`/samples/${ file_name }.mp3`)
    const array_buffer = await response.arrayBuffer ()
    const audio_data = await a.ctx.decodeAudioData (array_buffer)
    return await audio_data.getChannelData (0)
 }
 
+const rand_int = n => Math.floor (Math.random () * n)
+
 const init_audio = async () => {
    await a.ctx.resume ()
    a.is_init = true
 
-   for (const n of audio_assets) a.samples.push (await get_audio (n))
+   for (const n of audio_assets) {
+      a.samples.push (await get_audio (n))
+   }
 
+   a.current_sample = rand_int (a.samples.length)
+
+   const audio_data = a.samples [a.current_sample]
    for (let y = 0; y < cnv.height; y++) {
-      const audio_data = a.samples [a.current_sample]
       const norm_wave = audio_data [Math.floor (audio_data.length * y / cnv.height)]
       const x = (1 + norm_wave) * (cnv.width / 2)
       a.wave_form.push (x)
    }
 
-   const audio_data = a.samples [a.current_sample]
    await a.ctx.audioWorklet.addModule (`/etc/glitch_loop_osc.js`)
    a.glo = await new AudioWorkletNode (a.ctx, `glitch_loop_osc`, {
       processorOptions: {
@@ -91,33 +98,74 @@ const draw_frame = ms => {
    requestAnimationFrame (draw_frame)
 }
 
-splash.onpointerdown = async e => {
+document.onpointerdown = async e => {
    if (!a.is_init) {
       await init_audio ()
       await get_wake_lock ()
       splash.remove ()
       document.body.appendChild (cnv)
       // draw_frame ()
+      a.is_init = true
+   }
+   else {
+      a.current_sample += 1
+      a.current_sample %= a.samples.length
+
+      a.glo.disconnect ()
+      a.glo = await new AudioWorkletNode (a.ctx, `glitch_loop_osc`, {
+         processorOptions: {
+            audio_data: a.samples [a.current_sample]
+         }
+      })
+
+      a.glo.port.onmessage = e => {
+         a.phase = e.data
+      }
+   
+      a.freq  = await a.glo.parameters.get (`freq`)
+      a.fulcrum = await a.glo.parameters.get (`fulcrum`)
+      a.open = await a.glo.parameters.get (`open`)
+   
+      a.glo.connect (a.ctx.destination)
+
+      a.wave_form = []
+      const audio_data = a.samples [a.current_sample]
+      for (let y = 0; y < cnv.height; y++) {
+         const norm_wave = audio_data [Math.floor (audio_data.length * y / cnv.height)]
+         const x = (1 + norm_wave) * (cnv.width / 2)
+         a.wave_form.push (x)
+      }
    }
 }
 
-const oscillate = async () => {
+const midi_to_freq = n => 440 * Math.pow (2, (n - 69) / 12)
+const rand_element = a => a[Math.floor (Math.random () * a.length)]
+
+
+const chord = [ 0, 4, 7, 12 ]
+const root = 62
+
+const oscillate = () => {
    const t = a.ctx.currentTime
+   const f = midi_to_freq (root + rand_element (chord))
+   const d = 12
 
-   a.freq.setValueAtTime (660 * Math.pow (2, Math.random ()), t)
+   a.freq.cancelScheduledValues (t)
+   a.freq.setValueAtTime (a.freq.value, t)
+   a.freq.setValueAtTime (f, t + d)
 
-   a.fulcrum.cancelScheduledValues (0)
+   a.fulcrum.cancelScheduledValues (t)
    a.fulcrum.setValueAtTime (a.phase, t)
-   a.fulcrum.linearRampToValueAtTime (Math.random (), t + 2)
+   a.fulcrum.linearRampToValueAtTime (Math.random (), t + (d * 0.5))
 
-   a.open.cancelScheduledValues (0)
+   a.open.cancelScheduledValues (t)
    a.open.setValueAtTime (a.open.value, t)
-   a.open.linearRampToValueAtTime (0, t + 12)
+   a.open.linearRampToValueAtTime (0, t + d)
 }
 
-const loop = async () => {
+const loop = () => {
    const t = a.ctx.currentTime
-   a.open.cancelScheduledValues (0)
+   a.open.cancelScheduledValues (t)
    a.open.setValueAtTime (a.open.value, t)
    a.open.linearRampToValueAtTime (1, t + 12)
 }
