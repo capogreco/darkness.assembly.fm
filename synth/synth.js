@@ -106,37 +106,34 @@ const oscillate = async () => {
 
    a.freq.setValueAtTime (660 * Math.pow (2, Math.random ()), t)
 
-   a.fulcrum.cancelScheduledValues (t)
+   a.fulcrum.cancelScheduledValues (0)
    a.fulcrum.setValueAtTime (a.phase, t)
    a.fulcrum.linearRampToValueAtTime (Math.random (), t + 2)
 
-   a.open.cancelScheduledValues (t)
+   a.open.cancelScheduledValues (0)
    a.open.setValueAtTime (a.open.value, t)
    a.open.linearRampToValueAtTime (0, t + 12)
 }
 
 const loop = async () => {
    const t = a.ctx.currentTime
-   a.open.cancelScheduledValues (t)
+   a.open.cancelScheduledValues (0)
    a.open.setValueAtTime (a.open.value, t)
    a.open.linearRampToValueAtTime (1, t + 12)
 }
 
 const es = new EventSource (`/api/listen`)
 es.onmessage = e => {
-   const { type } = JSON.parse (e.data)
+   const { type, msg } = JSON.parse (e.data)
    if (type === `update`) {
-      const { msg: { mode } } = JSON.parse (e.data)
+      // const { msg: { mode } } = JSON.parse (e.data)
+      const { mode } = msg
       if (mode === `osc`) oscillate ()
       if (mode === `loop`) loop ()
    }    
-   // console.log (mode)
 
-   // const { type, message } = JSON.parse (e.data)
-   // if (type === `welcome`) {
-   //    console.log (message)
-   //    return
-   // }
-   // console.log (message)
+   if (type === `welcome`) {
+      console.log (msg)
+   }
 }
 

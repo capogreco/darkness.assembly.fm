@@ -8,6 +8,7 @@ globalThis.onkeydown = e => {
    if (e.key === `a` && mode === `loop`) {
       mode = `osc`
       update_synth ({ mode })
+      document.body.style.background = `crimson`
       console.log (`osc mode`)
    }
 }
@@ -16,6 +17,7 @@ globalThis.onkeyup = e => {
    if (e.key === `a` && mode === `osc`) { 
       mode = `loop`
       update_synth ({ mode })
+      document.body.style.background = `black`
       console.log (`loop mode`)
    }
 }
