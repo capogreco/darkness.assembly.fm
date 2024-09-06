@@ -68,7 +68,21 @@ const init_audio = async () => {
    a.fulcrum = await a.glo.parameters.get (`fulcrum`)
    a.open = await a.glo.parameters.get (`open`)
 
-   a.glo.connect (a.ctx.destination)
+   const impulse_response = await fetch (`/etc/R1NuclearReactorHall.m4a`)
+   const array_buf = await impulse_response.arrayBuffer ()
+   const audio_buf = await a.ctx.decodeAudioData (array_buf)
+
+   a.rev = a.ctx.createConvolver ()
+   a.rev.buffer = audio_buf
+
+   a.wet = a.ctx.createGain ()
+   a.wet.gain.value = 0
+
+   a.dry = a.ctx.createGain ()
+   a.dry.gain.value = 1
+
+   a.glo.connect (a.dry).connect (a.ctx.destination)
+   a.glo.connect (a.wet).connect (a.rev).connect (a.ctx.destination)
 
    draw_frame ()
 }
@@ -142,32 +156,48 @@ const midi_to_freq = n => 440 * Math.pow (2, (n - 69) / 12)
 const rand_element = a => a[Math.floor (Math.random () * a.length)]
 
 
-const chord = [ 0, 4, 7, 12 ]
-const root = 62
-
-const oscillate = () => {
+const oscillate = active_notes => {
    const t = a.ctx.currentTime
-   const f = midi_to_freq (root + rand_element (chord))
-   const d = 12
+   const n = rand_element (active_notes)
+   const f = midi_to_freq (n) * Math.pow (2, rand_int (3))
+   const d = 12 * Math.pow (2, Math.random () * 2) 
 
    a.freq.cancelScheduledValues (t)
    a.freq.setValueAtTime (a.freq.value, t)
-   a.freq.setValueAtTime (f, t + d)
+   a.freq.exponentialRampToValueAtTime (f, t + d)
 
    a.fulcrum.cancelScheduledValues (t)
    a.fulcrum.setValueAtTime (a.phase, t)
-   a.fulcrum.linearRampToValueAtTime (Math.random (), t + (d * 0.5))
+   a.fulcrum.linearRampToValueAtTime (Math.random (), t + (d * 1))
 
    a.open.cancelScheduledValues (t)
    a.open.setValueAtTime (a.open.value, t)
    a.open.linearRampToValueAtTime (0, t + d)
+
+   a.wet.gain.cancelScheduledValues (t)
+   a.wet.gain.setValueAtTime (a.wet.gain.value, t)
+   a.wet.gain.linearRampToValueAtTime (0.8, t + d)
+
+   a.dry.gain.cancelScheduledValues (t)
+   a.dry.gain.setValueAtTime (a.dry.gain.value, t)
+   a.dry.gain.linearRampToValueAtTime (0.5, t + d)
 }
 
 const loop = () => {
    const t = a.ctx.currentTime
+   const d = 12 * Math.pow (2, Math.random () * 2) 
+
    a.open.cancelScheduledValues (t)
    a.open.setValueAtTime (a.open.value, t)
-   a.open.linearRampToValueAtTime (1, t + 12)
+   a.open.linearRampToValueAtTime (1, t + d)
+
+   a.wet.gain.cancelScheduledValues (t)
+   a.wet.gain.setValueAtTime (a.wet.gain.value, t)
+   a.wet.gain.linearRampToValueAtTime (0, t + d)
+
+   a.dry.gain.cancelScheduledValues (t)
+   a.dry.gain.setValueAtTime (a.dry.gain.value, t)
+   a.dry.gain.linearRampToValueAtTime (1, t + d)
 }
 
 const es = new EventSource (`/api/listen`)
@@ -175,9 +205,12 @@ es.onmessage = e => {
    const { type, msg } = JSON.parse (e.data)
    if (type === `update`) {
       // const { msg: { mode } } = JSON.parse (e.data)
-      const { mode } = msg
-      if (mode === `osc`) oscillate ()
-      if (mode === `loop`) loop ()
+      // const { mode } = msg
+      // if (mode === `osc`) oscillate ()
+      // if (mode === `loop`) loop ()
+      const { active_notes } = msg
+      if (active_notes.length) oscillate (active_notes)
+      else loop ()
    }    
 
    if (type === `welcome`) {
