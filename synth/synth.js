@@ -84,6 +84,15 @@ const init_audio = async () => {
    a.glo.connect (a.dry).connect (a.ctx.destination)
    a.glo.connect (a.wet).connect (a.rev).connect (a.ctx.destination)
 
+   a.vib = a.ctx.createOscillator ()
+   a.vib.frequency.value = 0
+   a.vib.start ()
+
+   a.vib_wid = a.ctx.createGain ()
+   a.vib_wid.gain.value = 0
+
+   a.vib.connect (a.vib_wid).connect (a.fulcrum)
+
    draw_frame ()
 }
 
@@ -155,12 +164,21 @@ document.onpointerdown = async e => {
 const midi_to_freq = n => 440 * Math.pow (2, (n - 69) / 12)
 const rand_element = a => a[Math.floor (Math.random () * a.length)]
 
-
 const oscillate = active_notes => {
    const t = a.ctx.currentTime
    const n = rand_element (active_notes)
    const f = midi_to_freq (n) * Math.pow (2, rand_int (3))
    const d = 12 * Math.pow (2, Math.random () * 2) 
+
+   const v_freq = 0.666 * Math.pow (2, Math.random () * 3)
+   a.vib.frequency.cancelScheduledValues (t)
+   a.vib.frequency.setValueAtTime (a.vib.frequency.value, t)
+   a.vib.frequency.linearRampToValueAtTime (v_freq, t + d)
+
+   const v_wid = Math.random () * 0.001
+   a.vib_wid.gain.cancelScheduledValues (t)
+   a.vib_wid.gain.setValueAtTime (a.vib_wid.gain.value, t)
+   a.vib_wid.gain.linearRampToValueAtTime (v_wid, t + d)
 
    a.freq.cancelScheduledValues (t)
    a.freq.setValueAtTime (a.freq.value, t)
@@ -204,10 +222,7 @@ const es = new EventSource (`/api/listen`)
 es.onmessage = e => {
    const { type, msg } = JSON.parse (e.data)
    if (type === `update`) {
-      // const { msg: { mode } } = JSON.parse (e.data)
-      // const { mode } = msg
-      // if (mode === `osc`) oscillate ()
-      // if (mode === `loop`) loop ()
+      
       const { active_notes } = msg
       if (active_notes.length) oscillate (active_notes)
       else loop ()
