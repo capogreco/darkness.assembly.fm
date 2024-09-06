@@ -7,7 +7,7 @@ export const handle_api = async (req, type) => {
 
       const payload = {
          type: `welcome`,
-         message: `event source established`
+         msg: `event source established`
       }
 
       controller.enqueue (`data: ${JSON.stringify (payload) } \n\n`)
@@ -46,5 +46,6 @@ export const handle_api = async (req, type) => {
          return new Response ()
       },
    }
+
    return es_handler[type] () 
 }
