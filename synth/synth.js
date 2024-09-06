@@ -233,3 +233,15 @@ es.onmessage = e => {
    }
 }
 
+globalThis.onresize = () => { 
+   cnv.width = globalThis.innerWidth
+   cnv.height = globalThis.innerHeight
+   const audio_data = a.samples [a.current_sample]
+   a.wave_form = []
+   for (let y = 0; y < cnv.height; y++) {
+      const norm_wave = audio_data [Math.floor (audio_data.length * y / cnv.height)]
+      const x = (1 + norm_wave) * (cnv.width / 2)      
+      a.wave_form.push (x)
+   }
+}
+
