@@ -18,6 +18,8 @@ const a = {
    samples: [],
    current_sample: 0,
    wave_form: [],
+   phase: 0,
+   slow_mode: true,
 }
 
 const audio_assets = [ 
@@ -85,7 +87,7 @@ const init_audio = async () => {
    a.glo.connect (a.wet).connect (a.rev).connect (a.ctx.destination)
 
    a.vib = a.ctx.createOscillator ()
-   a.vib.frequency.value = 0
+   a.vib.frequency.value = 0.001
    a.vib.start ()
 
    a.vib_wid = a.ctx.createGain ()
@@ -168,14 +170,16 @@ const oscillate = active_notes => {
    const t = a.ctx.currentTime
    const n = rand_element (active_notes)
    const f = midi_to_freq (n) * Math.pow (2, rand_int (3))
-   const d = 12 * Math.pow (2, Math.random () * 2) 
+   const d = a.slow_mode
+      ? 12 * Math.pow (2, Math.random () * 2) 
+      : 0.2
 
-   const v_freq = 0.666 * Math.pow (2, Math.random () * 3)
+   const v_freq = 0.666 * Math.pow (0.666, Math.random () * 3) + 0.001
    a.vib.frequency.cancelScheduledValues (t)
    a.vib.frequency.setValueAtTime (a.vib.frequency.value, t)
-   a.vib.frequency.linearRampToValueAtTime (v_freq, t + d)
+   a.vib.frequency.exponentialRampToValueAtTime (v_freq, t + d)
 
-   const v_wid = Math.random () * 0.001
+   const v_wid = Math.random () * 0.01 + 0.001
    a.vib_wid.gain.cancelScheduledValues (t)
    a.vib_wid.gain.setValueAtTime (a.vib_wid.gain.value, t)
    a.vib_wid.gain.linearRampToValueAtTime (v_wid, t + d)
@@ -184,9 +188,11 @@ const oscillate = active_notes => {
    a.freq.setValueAtTime (a.freq.value, t)
    a.freq.exponentialRampToValueAtTime (f, t + d)
 
-   a.fulcrum.cancelScheduledValues (t)
-   a.fulcrum.setValueAtTime (a.phase, t)
-   a.fulcrum.linearRampToValueAtTime (Math.random (), t + (d * 1))
+   if (a.slow_mode) {
+      a.fulcrum.cancelScheduledValues (t)
+      a.fulcrum.setValueAtTime (a.phase, t)
+      a.fulcrum.linearRampToValueAtTime (Math.random (), t + (d * 1))
+   }
 
    a.open.cancelScheduledValues (t)
    a.open.setValueAtTime (a.open.value, t)
@@ -199,6 +205,11 @@ const oscillate = active_notes => {
    a.dry.gain.cancelScheduledValues (t)
    a.dry.gain.setValueAtTime (a.dry.gain.value, t)
    a.dry.gain.linearRampToValueAtTime (0.5, t + d)
+
+   a.slomo_timer && clearTimeout (a.slomo_timer)
+   if (a.slow_mode) {
+      a.slomo_timer = setTimeout (() => { a.slow_mode = false }, d * 1000)
+   }
 }
 
 const loop = () => {
@@ -216,6 +227,9 @@ const loop = () => {
    a.dry.gain.cancelScheduledValues (t)
    a.dry.gain.setValueAtTime (a.dry.gain.value, t)
    a.dry.gain.linearRampToValueAtTime (1, t + d)
+
+   a.slomo_timer && clearTimeout (a.slomo_timer)
+   a.slow_mode = true
 }
 
 const es = new EventSource (`/api/listen`)
