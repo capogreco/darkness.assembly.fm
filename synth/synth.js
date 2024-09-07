@@ -120,7 +120,7 @@ const draw_frame = ms => {
    ctx.strokeStyle = `white`
    ctx.stroke ()
 
-   requestAnimationFrame (draw_frame)
+   if (a.is_init) requestAnimationFrame (draw_frame)
 }
 
 document.onpointerdown = async e => {
@@ -233,13 +233,34 @@ const loop = () => {
 }
 
 const es = new EventSource (`/api/listen`)
-es.onmessage = e => {
+es.onmessage = async e => {
    const { type, msg } = JSON.parse (e.data)
    if (type === `update`) {
       
-      const { active_notes } = msg
-      if (active_notes.length) oscillate (active_notes)
-      else loop ()
+      if (Object.prototype.hasOwnProperty.call (msg, `active_notes`)) {
+         const { active_notes } = msg
+         if (active_notes.length) oscillate (active_notes)
+         else loop ()
+      }
+
+      if (Object.prototype.hasOwnProperty.call (msg, `is_playing`)) {
+         const { is_playing } = msg
+         if (is_playing) {
+            console.log (`playing`)
+            await init_audio ()
+         }
+         else {
+            console.log (`stopped`)
+            a.ctx.close ()
+            a.ctx = new AudioContext ()
+            a.is_init = false
+            a.samples = []
+            a.current_sample = 0
+            a.wave_form = []
+            a.phase = 0
+            a.slow_mode = true
+         }
+      }
    }    
 
    if (type === `welcome`) {

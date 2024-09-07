@@ -2,7 +2,17 @@ document.body.style.background = `black`
 document.body.style.overflow = `hidden`
 document.body.style.margin = 0
 
+const div = document.createElement (`div`)
+div.innerText = `stopped`
+div.style.color = `white`
+div.style.position = `absolute`
+div.style.top = `50%`
+div.style.left = `50%`
+div.style.transform = `translate(-50%, -50%)`
+document.body.appendChild (div)
+
 const active_notes = []
+let is_playing = false
 
 const key_to_note = k => {
    const key_map = {
@@ -34,6 +44,13 @@ const key_to_note = k => {
 }
 
 globalThis.onkeydown = e => {
+
+   if (e.key === `Enter`) {
+      is_playing = !is_playing
+      div.innerText = is_playing ? `playing` : `stopped`
+      update_synth ({ is_playing })
+      return
+   }
 
    const note = key_to_note (e.key)
    if (!note) return
