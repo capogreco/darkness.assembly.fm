@@ -28,6 +28,7 @@ const audio_assets = [
    `cisgendered`,
    `love_our_bodies`,
    `reticent_to_talk`,
+   `by_the_end`
 ]
 
 const get_audio = async file_name => {
