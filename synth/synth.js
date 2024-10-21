@@ -17,18 +17,20 @@ const a = {
    ctx: new AudioContext (),
    samples: [],
    current_sample: 0,
-   wave_form: [],
+   wave_forms: [],
    phase: 0,
    slow_mode: true,
 }
 
 const audio_assets = [ 
-   `abandoning_feminism`,
-   `abused_&_abandoned`,
-   `cisgendered`,
-   `love_our_bodies`,
-   `reticent_to_talk`,
-   `by_the_end`
+   `aydin_sari`,
+   `brian_rodrigo_llagas`,
+   `christian_aditya`,
+   `hamid_taheri`,
+   `joel_humphries`,
+   `minnie_park`,
+   `mohamad_shahazrin_airiel_bin_mat_azli`,
+   `nadia_egalita`,
 ]
 
 const get_audio = async file_name => {
@@ -50,22 +52,31 @@ const init_audio = async () => {
 
    a.current_sample = rand_int (a.samples.length)
 
-   const audio_data = a.samples [a.current_sample]
-   for (let y = 0; y < cnv.height; y++) {
-      const norm_wave = audio_data [Math.floor (audio_data.length * y / cnv.height)]
-      const x = (1 + norm_wave) * (cnv.width / 2)
-      a.wave_form.push (x)
+
+   for (let i = 0; i < a.samples.length; i++) {
+      const audio_data = a.samples [i]
+      a.wave_forms.push ([])
+      for (let y = 0; y < cnv.height; y++) {
+         const norm_wave = audio_data [Math.floor (audio_data.length * y / cnv.height)]
+         const x = (1 + norm_wave) * (cnv.width / 2)
+         a.wave_forms[i].push (x)
+      }
+      console.log (a.wave_forms[i].length)
    }
 
    await a.ctx.audioWorklet.addModule (`/etc/glitch_loop_osc.js`)
    a.glo = await new AudioWorkletNode (a.ctx, `glitch_loop_osc`, {
       processorOptions: {
-         audio_data
+         audio_array: a.samples,
+         audio_index: a.current_sample,
       }
    })
 
    a.glo.port.onmessage = e => {
-      a.phase = e.data
+      if (e.data.type === `phase`) {
+         a.phase = e.data.value
+         a.current_sample = e.data.index
+      }
    }
 
    a.freq  = await a.glo.parameters.get (`freq`)
@@ -102,13 +113,13 @@ const init_audio = async () => {
 
 const draw_frame = ms => {
    // const t = ms * 0.001
-   a.glo.port.postMessage (`get_phase`)   
+   a.glo.port.postMessage (`get_phase`)
 
    ctx.fillStyle = `indigo`
    ctx.fillRect (0, 0, cnv.width, cnv.height)
 
    ctx.beginPath ()
-   a.wave_form.forEach ((x, y) => {
+   a.wave_forms[a.current_sample].forEach ((x, y) => {
       ctx.lineTo (x, y)      
    })
 
@@ -125,6 +136,44 @@ const draw_frame = ms => {
    if (a.is_init) requestAnimationFrame (draw_frame)
 }
 
+const new_sample = async () => {
+   // a.current_sample += 1
+   // a.current_sample %= a.samples.length
+   a.current_sample = rand_int (a.samples.length)
+
+   a.glo.disconnect ()
+   a.glo = await new AudioWorkletNode (a.ctx, `glitch_loop_osc`, {
+      processorOptions: {
+         audio_data: a.samples [a.current_sample]
+      }
+   })
+
+   // a.glo.port.onmessage = e => {
+   //    if (e.data.type === `phase`) {
+   //       a.phase = e.data.value
+   //    }
+   //    if (e.data.type === `swap_sample`) {
+   //       console.log (`swapping sample`)
+   //       new_sample ()
+   //    }
+   // }
+
+   a.freq  = await a.glo.parameters.get (`freq`)
+   a.fulcrum = await a.glo.parameters.get (`fulcrum`)
+   a.open = await a.glo.parameters.get (`open`)
+
+   a.glo.connect (a.ctx.destination)
+
+   a.wave_form = []
+   const audio_data = a.samples [a.current_sample]
+   for (let y = 0; y < cnv.height; y++) {
+      const norm_wave = audio_data [Math.floor (audio_data.length * y / cnv.height)]
+      const x = (1 + norm_wave) * (cnv.width / 2)
+      a.wave_form.push (x)
+   }
+
+}
+
 document.onpointerdown = async e => {
    if (!a.is_init) {
       await init_audio ()
@@ -134,35 +183,37 @@ document.onpointerdown = async e => {
       // draw_frame ()
       a.is_init = true
    }
-   else {
-      a.current_sample += 1
-      a.current_sample %= a.samples.length
+   // else {
+   //    a.current_sample += 1
+   //    a.current_sample %= a.samples.length
 
-      a.glo.disconnect ()
-      a.glo = await new AudioWorkletNode (a.ctx, `glitch_loop_osc`, {
-         processorOptions: {
-            audio_data: a.samples [a.current_sample]
-         }
-      })
+   //    a.glo.disconnect ()
+   //    a.glo = await new AudioWorkletNode (a.ctx, `glitch_loop_osc`, {
+   //       processorOptions: {
+   //          audio_data: a.samples [a.current_sample]
+   //       }
+   //    })
 
-      a.glo.port.onmessage = e => {
-         a.phase = e.data
-      }
+   //    a.glo.port.onmessage = e => {
+   //       if (e.data.type === `phase`) {
+   //          a.phase = e.data.value
+   //       }
+   //    }
    
-      a.freq  = await a.glo.parameters.get (`freq`)
-      a.fulcrum = await a.glo.parameters.get (`fulcrum`)
-      a.open = await a.glo.parameters.get (`open`)
+   //    a.freq  = await a.glo.parameters.get (`freq`)
+   //    a.fulcrum = await a.glo.parameters.get (`fulcrum`)
+   //    a.open = await a.glo.parameters.get (`open`)
    
-      a.glo.connect (a.ctx.destination)
+   //    a.glo.connect (a.ctx.destination)
 
-      a.wave_form = []
-      const audio_data = a.samples [a.current_sample]
-      for (let y = 0; y < cnv.height; y++) {
-         const norm_wave = audio_data [Math.floor (audio_data.length * y / cnv.height)]
-         const x = (1 + norm_wave) * (cnv.width / 2)
-         a.wave_form.push (x)
-      }
-   }
+   //    a.wave_form = []
+   //    const audio_data = a.samples [a.current_sample]
+   //    for (let y = 0; y < cnv.height; y++) {
+   //       const norm_wave = audio_data [Math.floor (audio_data.length * y / cnv.height)]
+   //       const x = (1 + norm_wave) * (cnv.width / 2)
+   //       a.wave_form.push (x)
+   //    }
+   // }
 }
 
 const midi_to_freq = n => 440 * Math.pow (2, (n - 69) / 12)

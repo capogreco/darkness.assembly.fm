@@ -14,6 +14,33 @@ document.body.appendChild (div)
 const active_notes = []
 let is_playing = false
 
+
+const midi_handler = e => {
+   const [ status, note, velocity ] = e.data
+   console.log (status, note, velocity)
+   // if (status === 144) {
+   //    active_notes.push (note)
+   // } else if (status === 128) {
+   //    active_notes.splice (active_notes.indexOf (note), 1)
+   // }
+
+   // update_synth ({ active_notes })
+}
+
+const midi = await navigator.requestMIDIAccess ()
+midi.inputs.forEach (input => input.onmidimessage = midi_handler)
+console.dir (midi)
+
+midi.onstatechange = e => {
+   if (e.port instanceof MIDIInput) {
+      console.log (`${ e.port.name } was ${ e.port.state }\n`)
+      if (e.port.state === `connected`) {
+         e.port.onmidimessage = midi_handler
+      }
+   }
+}   
+
+
 const key_to_note = k => {
    const key_map = {
       d: 62,
