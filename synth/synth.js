@@ -1,4 +1,4 @@
-import { splash } from "/etc/synth_splash.js"
+import { splash } from "./etc/synth_splash.js"
 import { get_wake_lock } from "./etc/wake_lock.js"
 
 document.body.style.background = `black`
@@ -170,7 +170,7 @@ const init_audio = async () => {
 
 const draw_frame = ms => {
    // const t = ms * 0.001
-   a.glo.port.postMessage (`get_phase`)
+   a.glo.port.postMessage ({ type: `get_phase` })
 
    ctx.fillStyle = `indigo`
    ctx.fillRect (0, 0, cnv.width, cnv.height)
@@ -193,42 +193,42 @@ const draw_frame = ms => {
    if (a.is_init) requestAnimationFrame (draw_frame)
 }
 
-const new_sample = async () => {
-   // a.current_sample += 1
-   // a.current_sample %= a.samples.length
-   // a.current_sample = rand_int (a.samples[a.group].length)
+// const new_sample = async () => {
+//    // a.current_sample += 1
+//    // a.current_sample %= a.samples.length
+//    // a.current_sample = rand_int (a.samples[a.group].length)
 
-   // a.glo.disconnect ()
-   // a.glo = await new AudioWorkletNode (a.ctx, `glitch_loop_osc`, {
-   //    processorOptions: {
-   //       audio_data: a.samples [a.current_sample]
-   //    }
-   // })
+//    // a.glo.disconnect ()
+//    // a.glo = await new AudioWorkletNode (a.ctx, `glitch_loop_osc`, {
+//    //    processorOptions: {
+//    //       audio_data: a.samples [a.current_sample]
+//    //    }
+//    // })
 
-   // a.glo.port.onmessage = e => {
-   //    if (e.data.type === `phase`) {
-   //       a.phase = e.data.value
-   //    }
-   //    if (e.data.type === `swap_sample`) {
-   //       console.log (`swapping sample`)
-   //       new_sample ()
-   //    }
-   // }
+//    // a.glo.port.onmessage = e => {
+//    //    if (e.data.type === `phase`) {
+//    //       a.phase = e.data.value
+//    //    }
+//    //    if (e.data.type === `swap_sample`) {
+//    //       console.log (`swapping sample`)
+//    //       new_sample ()
+//    //    }
+//    // }
 
-   a.freq  = await a.glo.parameters.get (`freq`)
-   a.fulcrum = await a.glo.parameters.get (`fulcrum`)
-   a.open = await a.glo.parameters.get (`open`)
+//    a.freq  = await a.glo.parameters.get (`freq`)
+//    a.fulcrum = await a.glo.parameters.get (`fulcrum`)
+//    a.open = await a.glo.parameters.get (`open`)
 
-   a.glo.connect (a.ctx.destination)
+//    a.glo.connect (a.ctx.destination)
 
-   a.wave_form = []
-   const audio_data = a.samples[a.group] [a.current_sample]
-   for (let y = 0; y < cnv.height; y++) {
-      const norm_wave = audio_data [Math.floor (audio_data.length * y / cnv.height)]
-      const x = (1 + norm_wave) * (cnv.width / 2)
-      a.wave_form.push (x)
-   }
-}
+//    a.wave_form = []
+//    const audio_data = a.samples[a.group] [a.current_sample]
+//    for (let y = 0; y < cnv.height; y++) {
+//       const norm_wave = audio_data [Math.floor (audio_data.length * y / cnv.height)]
+//       const x = (1 + norm_wave) * (cnv.width / 2)
+//       a.wave_form.push (x)
+//    }
+// }
 
 document.onpointerdown = async e => {
    if (!a.is_init) {
@@ -359,7 +359,7 @@ es.onmessage = async e => {
             await init_audio ()
          }
          else {
-            console.log (`stopped`)
+            console.log (`stopping?`)
             // a.ctx.close ()
             // a.ctx = new AudioContext ()
             // a.is_init = false
@@ -370,6 +370,17 @@ es.onmessage = async e => {
             // a.slow_mode = true
          }
       }
+
+      if (Object.prototype.hasOwnProperty.call (msg, `group`)) {
+         const { group } = msg
+         a.group = group
+         console.log (`group is: `, a.group)
+         a.glo.port.postMessage ({
+            type: `swap_group`,
+            group,
+         })
+      }
+
    }    
 
    if (type === `welcome`) {

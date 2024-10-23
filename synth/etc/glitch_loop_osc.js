@@ -10,16 +10,22 @@ class GLOProcessor extends AudioWorkletProcessor {
       this.audio_array = audio_array
       this.i = audio_index
       this.g = audio_group
+      this.swap_group = false
+      this.new_group = 0
 
 
       this.port.onmessage = e => {
-         if (e.data === `get_phase`) {
+         if (e.data.type === `get_phase`) {
             this.port.postMessage ({
                type: `phase`,
                value: this.play_head / this.audio_array[this.g][this.i[this.g]].length,
                index: this.i,
                group: this.g,
             })
+         }
+         if (e.data.type === `swap_group`) {
+            this.swap_group = true
+            this.new_group = e.data.group
          }
       }
    }
@@ -62,6 +68,10 @@ class GLOProcessor extends AudioWorkletProcessor {
          if (this.play_head >= end) {
             this.play_head = Math.floor (start)
             if (open === 1) {
+               if (this.swap_group) {
+                  this.g = this.g === 0 ? 1 : 0
+                  this.swap_group = false
+               }
                const new_index = rand_int (this.audio_array[this.g].length)
                this.i[this.g] = new_index
             }

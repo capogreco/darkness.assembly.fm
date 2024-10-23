@@ -11,34 +11,42 @@ div.style.left = `50%`
 div.style.transform = `translate(-50%, -50%)`
 document.body.appendChild (div)
 
+const group_div = document.createElement (`div`)
+group_div.innerText = `group: 0`
+group_div.style.color = `white`
+group_div.style.position = `absolute`
+group_div.style.top = `10%`
+group_div.style.left = `10%`
+document.body.appendChild (group_div)
+
 const active_notes = []
 let is_playing = false
+let group = 0
 
+// const midi_handler = e => {
+//    const [ status, note, velocity ] = e.data
+//    console.log (status, note, velocity)
+//    // if (status === 144) {
+//    //    active_notes.push (note)
+//    // } else if (status === 128) {
+//    //    active_notes.splice (active_notes.indexOf (note), 1)
+//    // }
 
-const midi_handler = e => {
-   const [ status, note, velocity ] = e.data
-   console.log (status, note, velocity)
-   // if (status === 144) {
-   //    active_notes.push (note)
-   // } else if (status === 128) {
-   //    active_notes.splice (active_notes.indexOf (note), 1)
-   // }
+//    // update_synth ({ active_notes })
+// }
 
-   // update_synth ({ active_notes })
-}
+// const midi = await navigator.requestMIDIAccess ()
+// midi.inputs.forEach (input => input.onmidimessage = midi_handler)
+// console.dir (midi)
 
-const midi = await navigator.requestMIDIAccess ()
-midi.inputs.forEach (input => input.onmidimessage = midi_handler)
-console.dir (midi)
-
-midi.onstatechange = e => {
-   if (e.port instanceof MIDIInput) {
-      console.log (`${ e.port.name } was ${ e.port.state }\n`)
-      if (e.port.state === `connected`) {
-         e.port.onmidimessage = midi_handler
-      }
-   }
-}   
+// midi.onstatechange = e => {
+//    if (e.port instanceof MIDIInput) {
+//       console.log (`${ e.port.name } was ${ e.port.state }\n`)
+//       if (e.port.state === `connected`) {
+//          e.port.onmidimessage = midi_handler
+//       }
+//    }
+// }   
 
 
 const key_to_note = k => {
@@ -71,11 +79,17 @@ const key_to_note = k => {
 }
 
 globalThis.onkeydown = e => {
-
    if (e.key === `Enter`) {
       is_playing = !is_playing
       div.innerText = is_playing ? `playing` : `stopped`
       update_synth ({ is_playing })
+      return
+   }
+
+   if (e.key === `q`) {
+      group = group === 0 ? 1 : 0
+      group_div.innerText = `group: ${ group }`
+      update_synth ({ group })
       return
    }
 
@@ -123,6 +137,8 @@ globalThis.onkeyup = e => {
 const update_synth = msg => {
    const payload = { msg, type: `update` }
    const json = JSON.stringify (payload)
+
+   console.log (json)
    
    fetch (`/api/update`, {
       method: `POST`,
