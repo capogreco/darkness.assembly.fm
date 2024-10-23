@@ -354,21 +354,10 @@ es.onmessage = async e => {
 
       if (Object.prototype.hasOwnProperty.call (msg, `is_playing`)) {
          const { is_playing } = msg
-         if (is_playing) {
-            console.log (`playing`)
-            await init_audio ()
-         }
-         else {
-            console.log (`stopping?`)
-            // a.ctx.close ()
-            // a.ctx = new AudioContext ()
-            // a.is_init = false
-            // a.samples = []
-            // a.current_sample = 0
-            // a.wave_form = []
-            // a.phase = 0
-            // a.slow_mode = true
-         }
+         a.glo.port.postMessage ({
+            type: `is_playing`,
+            is_playing,
+         })
       }
 
       if (Object.prototype.hasOwnProperty.call (msg, `group`)) {

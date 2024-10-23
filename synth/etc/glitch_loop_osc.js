@@ -12,6 +12,8 @@ class GLOProcessor extends AudioWorkletProcessor {
       this.g = audio_group
       this.swap_group = false
       this.new_group = 0
+      this.is_playing = 1
+      this.stop_playing = false
 
 
       this.port.onmessage = e => {
@@ -26,6 +28,15 @@ class GLOProcessor extends AudioWorkletProcessor {
          if (e.data.type === `swap_group`) {
             this.swap_group = true
             this.new_group = e.data.group
+         }
+         if (e.data.type === `is_playing`) {
+            if (e.data.is_playing) {
+               this.is_playing = 1
+               this.stop_playing = false
+            }
+            else {
+               this.stop_playing = true
+            }
          }
       }
    }
@@ -61,13 +72,18 @@ class GLOProcessor extends AudioWorkletProcessor {
             this.play_head = Math.floor (start)
          }
 
-         this.play_head += rate
+         this.play_head += rate * this.is_playing
          const data = this.audio_array[this.g][this.i[this.g]]
          out[frame] = data[Math.floor(this.play_head)]
 
          if (this.play_head >= end) {
             this.play_head = Math.floor (start)
             if (open === 1) {
+
+               if (this.stop_playing) {
+                  this.is_playing = 0
+               }
+
                if (this.swap_group) {
                   this.g = this.g === 0 ? 1 : 0
                   this.swap_group = false
