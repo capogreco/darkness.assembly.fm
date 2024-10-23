@@ -3,19 +3,22 @@ const deparameterise = (a, i) => a[(a.length != 1) * i]
 const rand_int = n => Math.floor (Math.random () * n)
 
 class GLOProcessor extends AudioWorkletProcessor {
-   constructor ({ processorOptions: { audio_array, audio_index } }) {
+   constructor ({ processorOptions: { audio_array, audio_index, audio_group } }) {
       super ()
       this.alive = true
       this.play_head = 0
       this.audio_array = audio_array
-      this.audio_index = audio_index
+      this.i = audio_index
+      this.g = audio_group
+
 
       this.port.onmessage = e => {
          if (e.data === `get_phase`) {
             this.port.postMessage ({
                type: `phase`,
-               value: this.play_head / this.audio_array[this.audio_index].length,
-               index: this.audio_index
+               value: this.play_head / this.audio_array[this.g][this.i[this.g]].length,
+               index: this.i,
+               group: this.g,
             })
          }
       }
@@ -40,7 +43,7 @@ class GLOProcessor extends AudioWorkletProcessor {
          const open    = deparameterise (parameters.open, frame) ** 12
 
          const period = sampleRate / freq // in frames
-         const length = this.audio_array[this.audio_index].length
+         const length = this.audio_array[this.g][this.i[this.g]].length
          const total_periods = length / period
          const current_periods = Math.floor (open * (total_periods - 1)) + 1
          const current_frames = current_periods * period
@@ -53,13 +56,14 @@ class GLOProcessor extends AudioWorkletProcessor {
          }
 
          this.play_head += rate
-         const data = this.audio_array[this.audio_index]
+         const data = this.audio_array[this.g][this.i[this.g]]
          out[frame] = data[Math.floor(this.play_head)]
 
          if (this.play_head >= end) {
             this.play_head = Math.floor (start)
             if (open === 1) {
-               this.audio_index = rand_int (this.audio_array.length)
+               const new_index = rand_int (this.audio_array[this.g].length)
+               this.i[this.g] = new_index
             }
             // this.port.postMessage ({
             //    type: `swap_sample`,
